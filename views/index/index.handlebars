@@ -1,0 +1,165 @@
+<nav id="menu"></nav>
+<div id='map' style='width: 100%; height: 980px;'></div>
+<div id='map-overlay' class='map-overlay'></div>
+
+<script>
+  mapboxgl.accessToken = 'pk.eyJ1IjoiYXJveGFuIiwiYSI6ImNqbG0xZnpmNjEzbWMzcXFtd2VoMjk5cXgifQ.rPOo5foRV5NzPHrOvX53NA';
+  var map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v10?optimize=true',
+    zoom: 11,
+    maxZoom: 15,
+    minZoom: 4,
+    center: [-104.881105, 39.76185],
+    renderWorldCopies: false
+  });
+  var overlay = document.getElementById('map-overlay');
+
+  // Create a popup, but don't add it to the map yet.
+  var popup = new mapboxgl.Popup({
+    closeButton: false
+  });
+  // Add zoom and rotation controls to the map.
+
+  map.addControl(new mapboxgl.NavigationControl());
+
+
+  map.on('load', function() {
+    map.addSource('united', {
+      'type': 'geojson',
+      'data': 'https://raw.githubusercontent.com/Abourass/Zillow-Neighborhoods-for-the-entire-US/master/USCorrected.geojson'
+    });
+    map.addSource('counties', {
+      "type": "vector",
+      "url": "mapbox://mapbox.82pkq93d"
+    });
+    map.addLayer({
+      "id": "counties",
+      "type": "fill",
+      "source": "counties",
+      "source-layer": "original",
+      "paint": {
+        "fill-outline-color": "rgba(0,0,0,0.1)",
+        "fill-color": "rgba(0,0,0,0.1)"
+      }
+    }, 'place-city-sm'); // Place polygon under these labels.
+
+    map.addLayer({
+      "id": "counties-highlighted",
+      "type": "fill",
+      "source": "counties",
+      "source-layer": "original",
+      "paint": {
+        "fill-outline-color": "#484896",
+        "fill-color": "rgba(0,0,0,0.3)",
+      },
+      "filter": ["in", "COUNTY", ""]
+    }, 'place-city-sm'); // Place polygon under these labels.
+
+    map.on('mousemove', 'counties', function(e) {
+      // Change the cursor style as a UI indicator.
+      map.getCanvas().style.cursor = 'pointer';
+
+      // Single out the first found feature.
+      var feature = e.features[0];
+
+      // Query the counties layer visible in the map. Use the filter
+      // param to only collect results that share the same county name.
+      var relatedFeatures = map.querySourceFeatures('counties', {
+        sourceLayer: 'original',
+        filter: ['in', 'COUNTY', feature.properties.COUNTY]
+      });
+
+      // Render found features in an overlay.
+      overlay.innerHTML = '';
+
+      // Total the population of all features
+      var populationSum = relatedFeatures.reduce(function(memo, feature) {
+        return memo + feature.properties.population;
+      }, 0);
+
+      var title = document.createElement('strong');
+      title.textContent = feature.properties.COUNTY + ' (' + relatedFeatures.length + ' found)';
+
+      var population = document.createElement('div');
+      population.textContent = 'Total population: ' + populationSum.toLocaleString();
+
+      overlay.appendChild(title);
+      overlay.appendChild(population);
+      overlay.style.display = 'block';
+
+      // Add features that share the same county name to the highlighted layer.
+      map.setFilter('counties-highlighted', ['in', 'COUNTY', feature.properties.COUNTY]);
+
+
+    });
+
+    map.on('mouseleave', 'counties', function() {
+      map.getCanvas().style.cursor = '';
+      popup.remove();
+      map.setFilter('counties-highlighted', ['in', 'COUNTY', '']);
+      overlay.style.display = 'none';
+    });
+    map.addLayer({
+      'id': 'zillow',
+      'type': 'fill',
+      'source': 'united',
+      'layout': {},
+      'paint': {
+        'fill-color': 'rgba(61, 85, 151, 0.5)',
+        'fill-outline-color': 'rgba(151, 61, 85, 1)'
+      }
+    });
+    // When a click event occurs on a feature in the states layer, open a popup at the
+    // location of the click, with description HTML from its properties.
+    map.on('click', 'zillow', function(e) {
+      new mapboxgl.Popup()
+        .setLngLat(e.lngLat)
+        .setHTML(
+          `Neighberhood - ${e.features[0].properties.Name} <br /> County - ${e.features[0].properties.County} <br /> Region ID - ${e.features[0].properties.RegionID} <br /> City - ${e.features[0].properties.City} <br /> State - ${e.features[0].properties.State}`
+        )
+        .addTo(map);
+    });
+
+    // Change the cursor to a pointer when the mouse is over the states layer.
+    map.on('mouseenter', 'zillow', function() {
+      map.getCanvas().style.cursor = 'pointer';
+    });
+
+    // Change it back to a pointer when it leaves.
+    map.on('mouseleave', 'zillow', function() {
+      map.getCanvas().style.cursor = '';
+    });
+  });
+  var toggleableLayerIds = ['counties', 'zillow'];
+
+  for (var i = 0; i < toggleableLayerIds.length; i++) {
+    var id = toggleableLayerIds[i];
+
+    var link = document.createElement('a');
+    link.href = '#';
+    link.className = 'active';
+    link.textContent = id;
+    link.setAttribute('id', id);
+
+    link.onclick = function(e) {
+      var clickedLayer = this.textContent;
+      e.preventDefault();
+      e.stopPropagation();
+
+      var visibility = map.getLayoutProperty(clickedLayer, 'visibility');
+
+      if (visibility === 'visible') {
+        map.setLayoutProperty(clickedLayer, 'visibility', 'none');
+        this.className = '';
+      } else {
+        this.className = 'active';
+        map.setLayoutProperty(clickedLayer, 'visibility', 'visible');
+      }
+    };
+
+    var layers = document.getElementById('menu');
+    layers.appendChild(link);
+  }
+
+</script>
