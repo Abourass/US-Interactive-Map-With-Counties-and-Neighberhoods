@@ -115,9 +115,28 @@
         max-width: 500px;
       }
 
-      .mapboxgl-ctrl-geocoder input[type='text'] {
-        width: 400px;
-        font-size: 14px;
+      @media only screen and (min-width: 800px) {
+        .mapboxgl-ctrl-geocoder input[type='text'] {
+          width: 400px;
+          font-size: 14px;
+        }
+
+        .mapboxgl-ctrl-geocoder {
+          min-width: 450px;
+          max-width: 500px;
+        }
+      }
+
+      @media only screen and (max-width: 799px) {
+        .mapboxgl-ctrl-geocoder input[type='text'] {
+          width: 400px;
+          font-size: 14px;
+        }
+
+        .mapboxgl-ctrl-geocoder {
+          min-width: 42%;
+          max-width: 44%;
+        }
       }
 
     </style>
