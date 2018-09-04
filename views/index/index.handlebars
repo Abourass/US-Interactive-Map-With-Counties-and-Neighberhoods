@@ -7,27 +7,37 @@
   var map = new mapboxgl.Map({
     container: 'map',
     style: 'mapbox://styles/mapbox/streets-v10?optimize=true',
-    zoom: 11,
-    maxZoom: 15,
-    minZoom: 4,
+    zoom: 8,
+    maxZoom: 18,
+    minZoom: 5,
     center: [-104.881105, 39.76185],
     renderWorldCopies: false
   });
   var overlay = document.getElementById('map-overlay');
+
+  var geocoder = new MapboxGeocoder({
+    accessToken: mapboxgl.accessToken
+  });
 
   // Create a popup, but don't add it to the map yet.
   var popup = new mapboxgl.Popup({
     closeButton: false
   });
   // Add zoom and rotation controls to the map.
-
+  map.addControl(geocoder);
   map.addControl(new mapboxgl.NavigationControl());
-
+  // Add geolocate control to the map.
+  map.addControl(new mapboxgl.GeolocateControl({
+    positionOptions: {
+      enableHighAccuracy: true
+    },
+    trackUserLocation: true
+  }));
 
   map.on('load', function() {
     map.addSource('united', {
       'type': 'geojson',
-      'data': 'https://raw.githubusercontent.com/Abourass/Zillow-Neighborhoods-for-the-entire-US/master/USCorrected.geojson'
+      'data': 'https://raw.githubusercontent.com/Abourass/Zillow-Neighborhoods-for-the-entire-US/master/USCorrected.geojson',
     });
     map.addSource('counties', {
       "type": "vector",
@@ -51,7 +61,7 @@
       "source-layer": "original",
       "paint": {
         "fill-outline-color": "#484896",
-        "fill-color": "rgba(0,0,0,0.3)",
+        "fill-color": "rgba(1,1,1,0.1)",
       },
       "filter": ["in", "COUNTY", ""]
     }, 'place-city-sm'); // Place polygon under these labels.
@@ -109,6 +119,29 @@
         'fill-color': 'rgba(61, 85, 151, 0.5)',
         'fill-outline-color': 'rgba(151, 61, 85, 1)'
       }
+    });
+    map.addSource('single-point', {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": []
+      }
+    });
+
+    map.addLayer({
+      "id": "point",
+      "source": "single-point",
+      "type": "circle",
+      "paint": {
+        "circle-radius": 10,
+        "circle-color": "#007cbf"
+      }
+    });
+
+    // Listen for the `result` event from the MapboxGeocoder that is triggered when a user
+    // makes a selection and add a symbol that matches the result.
+    geocoder.on('result', function(ev) {
+      map.getSource('single-point').setData(ev.result.geometry);
     });
     // When a click event occurs on a feature in the states layer, open a popup at the
     // location of the click, with description HTML from its properties.
