@@ -61,3 +61,7 @@ typings/
 .next
 
 .idea
+
+.snowpack
+build
+node_modules
